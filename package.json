@@ -1,0 +1,19 @@
+{
+  "name": "webcodecs-webrtc-play",
+  "version": "1.0.0",
+  "description": "webcodecs  webrtc",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notedit/webcodecs-webrtc-play.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/notedit/webcodecs-webrtc-play/issues"
+  },
+  "homepage": "https://github.com/notedit/webcodecs-webrtc-play#readme"
+}
