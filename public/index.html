@@ -1,0 +1,249 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+    <title>webcodecs webrtc test </title>
+    <style type="text/css">
+        .room {
+            cursor: pointer;
+        }
+
+        div.select {
+            display: inline-block;
+            margin: 0 0 1em 0;
+        }
+    </style>
+
+
+    <script type='text/javascript'>
+
+        window.localStorage.setItem('debug', '*');
+        let frames = 0;
+
+        let videoEncoder;
+        let audioEncoder;
+        let encodedWriter;
+
+        async function publish() {
+
+            let videoElement = document.getElementById('video_container_publish');
+            let serverurl = document.getElementById("serverurl").value;
+
+            const constraints = {
+                video: { width: { exact: 640 }, height: { exact: 480 } },
+                audio: false
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+
+
+            let vprocessor = new MediaStreamTrackProcessor(stream.getVideoTracks()[0]);
+            let vgenerator = new MediaStreamTrackGenerator('video');
+            const vsource = vprocessor.readable;
+            const vsink = vgenerator.writable;
+            let vtransformer = new TransformStream({ transform: videoTransform });
+            vsource.pipeThrough(vtransformer).pipeTo(vsink);
+
+
+            videoElement.srcObject = stream;
+            await videoElement.play();
+
+
+            var pc = new RTCPeerConnection({
+                encodedInsertableStreams: true,
+            });
+
+            let transceiver = await pc.addTransceiver(stream.getVideoTracks()[0], {
+                direction: "sendonly",
+                streams: [stream],
+            });
+
+            setupSenderTransform(transceiver.sender);
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+
+            console.log(offer.sdp);
+
+            let res = await fetch(serverurl + "/rtc/v1/publish", {
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sdp: offer.sdp
+                })
+            })
+
+            console.dir(res)
+            let ret = await res.json()
+
+            let answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: ret.sdp
+            })
+
+            await pc.setRemoteDescription(answer);
+        }
+
+
+        function videoTransform(frame, controller) {
+
+            console.log(frame.codedWidth + 'x' + frame.codedHeight);
+            if (videoEncoder == null) {
+                videoEncoder = new VideoEncoder({
+                    output: (chunk) => {
+                        console.dir(chunk);
+                        //encodedWriter.write(chunk);
+                        //TODO https://w3c.github.io/webrtc-encoded-transform/#scriptTransform
+                    },
+                    error: (error) => {
+                        console.error("video encoder " + error);
+                    }
+                });
+                videoEncoder.configure({
+                    codec: 'avc1.42001f',
+                    width: 640,
+                    height: 480,
+                    avc: {
+                        format: 'annexb'
+                    }
+                });
+            }
+            videoEncoder.encode(frame);
+            controller.enqueue(frame);
+        }
+
+
+        async function play() {
+
+            let videoElement = document.getElementById('video_container_play');
+            let serverurl = document.getElementById("serverurl").value;
+
+
+            var pc = new RTCPeerConnection({
+                encodedInsertableStreams: true,
+            });
+
+            const transceiver = await pc.addTransceiver("video", {
+                direction: "recvonly",
+            });
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+
+            pc.ontrack = (e) => {
+                if (!videoElement.srcObject) {
+                    videoElement.srcObject = e.streams[0]
+                }
+            }
+
+
+            let res = await fetch(serverurl + "/rtc/v1/play", {
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sdp: offer.sdp
+                })
+            })
+
+            let ret = await res.json()
+
+            console.dir(ret)
+
+            let answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: ret.sdp
+            })
+
+            await pc.setRemoteDescription(answer);
+        }
+
+
+        function setupSenderTransform(sender) {
+
+            const senderStreams = sender.createEncodedStreams();
+            const writable = senderStreams.writableStream || senderStreams.writable;
+
+            encodedWriter = writable.getWriter();
+
+        }
+
+
+        // function setupSenderTransform2(sender) {
+        //     console.log('sender kind=%s', sender.track.kind);
+        //     const senderStreams = sender.createEncodedStreams();
+        //     const readableStream = senderStreams.readableStream;
+        //     const writableStream = senderStreams.writableStream;
+
+        //     const transformStream = new TransformStream({
+        //         transform: encodeFunction,
+        //     });
+        //     readableStream
+        //         .pipeThrough(transformStream)
+        //         .pipeTo(writableStream);
+        // }
+
+
+        // function encodeFunction(chunk, controller) {
+
+        //     console.dir(chunk);
+
+        //     controller.enqueue(chunk);
+        // }
+
+
+
+    </script>
+
+</head>
+
+<body>
+    <h1>WebRTC Demo</h1>
+    <br />
+
+
+    <div>
+        <form>
+            <input type="text" size="50" id="serverurl" name="serverurl" value="http://localhost:5000"><br><br>
+        </form>
+        <button onclick="publish()">Publish</button>
+        <br><br>
+        <button onclick="play()">Play</button>
+    </div>
+
+
+
+    <div id="conference">
+        publish:
+        <br />
+        <div id="container">
+            <video id="video_container_publish" playsinline controls autoplay muted width="640" height="480"></video>
+        </div>
+        <br />
+
+    </div>
+
+
+
+
+    <div id="conference">
+        play:
+        <br />
+        <div id="container">
+            <video id="video_container_play" playsinline controls autoplay muted width="640" height="480"></video>
+        </div>
+        <br />
+
+    </div>
+
+</body>
+
+
+</html>

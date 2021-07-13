@@ -15,5 +15,17 @@
   "bugs": {
     "url": "https://github.com/notedit/webcodecs-webrtc-play/issues"
   },
-  "homepage": "https://github.com/notedit/webcodecs-webrtc-play#readme"
+  "homepage": "https://github.com/notedit/webcodecs-webrtc-play#readme",
+  "dependencies": {
+    "@types/body-parser": "^1.19.1",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "medooze-media-server": "^0.107.0",
+    "method-override": "^3.0.0",
+    "semantic-sdp": "^3.21.0",
+    "typescript": "^4.3.5"
+  }
 }
